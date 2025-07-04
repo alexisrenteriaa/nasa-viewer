@@ -1,41 +1,47 @@
+import tkinter as tk
+from tkinter import messagebox
 import requests
-import os
-from dotenv import load_dotenv
-from PIL import Image
+from PIL import Image, ImageTk
 from io import BytesIO
 
-load_dotenv()
-NASA_API_KEY = os.getenv("NASA_API_KEY")
-
-def buscar_imagenes(planeta):
+def buscar_imagenes_tk(planeta, cantidad=5):
+    # Igual que la función anterior, pero devuelve las URLs
     url = f"https://images-api.nasa.gov/search?q={planeta}&media_type=image"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         items = data['collection']['items']
-        if items:
-            # Obtener la primera imagen válida
-            img_url = items[0]['links'][0]['href']
-            print(f"Imagen encontrada: {img_url}")
-            img_response = requests.get(img_url)
-            img = Image.open(BytesIO(img_response.content))
-            img.show()
-        else:
-            print(f"No se encontraron imágenes de {planeta}.")
+        urls = [item['links'][0]['href'] for item in items[:cantidad]]
+        return urls
     else:
-        print(f"Error al buscar imágenes: {response.status_code}")
+        return []
 
-def menu():
-    planetas = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
-    print("Selecciona un planeta:")
-    for i, planeta in enumerate(planetas, 1):
-        print(f"{i}. {planeta}")
-    
-    opcion = input("Opción: ")
-    if opcion.isdigit() and 1 <= int(opcion) <= len(planetas):
-        buscar_imagenes(planetas[int(opcion) - 1])
-    else:
-        print("Opción no válida.")
+def mostrar_imagenes_tk(urls):
+    for url in urls:
+        img_response = requests.get(url)
+        img_data = Image.open(BytesIO(img_response.content))
+        img_data.show()
 
-if __name__ == "__main__":
-    menu()
+def on_seleccionar():
+    planeta = var_planeta.get()
+    urls = buscar_imagenes_tk(planeta)
+    if not urls:
+        messagebox.showerror("Error", f"No se encontraron imágenes de {planeta}")
+        return
+    mostrar_imagenes_tk(urls)
+
+root = tk.Tk()
+root.title("NASA Planet Viewer")
+
+var_planeta = tk.StringVar(root)
+planetas = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+var_planeta.set(planetas[0])
+
+tk.Label(root, text="Selecciona un planeta").pack(pady=10)
+dropdown = tk.OptionMenu(root, var_planeta, *planetas)
+dropdown.pack(pady=10)
+
+btn = tk.Button(root, text="Mostrar imágenes", command=on_seleccionar)
+btn.pack(pady=10)
+
+root.mainloop()
